@@ -7,6 +7,8 @@
 #include <map>
 #include <cstdlib>
 #include <cstring>
+#include <cctype>
+#include <cerrno>
 #include <ctime>
 #include <csignal>
 #include <unistd.h>
@@ -21,18 +23,18 @@ struct Actividad {
     string Nombre_Actividad;
     int tiempo_ms;
     vector<string> Dependencias;
-    vector<int> dependientes;  
-    int pendientes;          
+    vector<int> dependientes;
+    int pendientes;
     int estado;
-    string inbox;             
-    int fdLectura;            
+    string inbox;
+    int fdLectura;
     pid_t pid;
 };
 
 vector<Actividad> acts;
-map<string, int> indice;       
-vector<int> corriendo;        
-int terminadas = 0;           
+map<string, int> indice;
+vector<int> corriendo;
+int terminadas = 0;
 volatile sig_atomic_t seremi = 0;
 sigset_t mascaraOriginal;
 
@@ -58,6 +60,17 @@ vector<string> cortar(string texto, char separador) {
     return partes;
 }
 
+bool esEnteroPositivo(string s, int &valor) {
+    if (s == "") return false;
+    for (int i = 0; i < (int)s.size(); i++) {
+        if (!isdigit((unsigned char)s[i])) return false;
+    }
+    long v = atol(s.c_str());
+    if (v <= 0 || v > 1000000000L) return false;
+    valor = (int)v;
+    return true;
+}
+
 bool leerPlan(string archivo) {
     ifstream f(archivo.c_str());
     if (!f.is_open()) {
@@ -81,8 +94,9 @@ bool leerPlan(string archivo) {
         a.ID_Actividad = campos[0];
         a.Nombre_Actividad = campos[1];
 
-        if (campos.size() >= 3 && campos[2] != "") {
-            a.tiempo_ms = atoi(campos[2].c_str());
+        int t = 0;
+        if (campos.size() >= 3 && campos[2] != "" && esEnteroPositivo(campos[2], t)) {
+            a.tiempo_ms = t;
         } else {
             a.tiempo_ms = 100 + rand() % 4901;
         }
@@ -123,5 +137,6 @@ bool leerPlan(string archivo) {
 }
 
 int main(){
-    return 0;
+
+return 0;
 }
