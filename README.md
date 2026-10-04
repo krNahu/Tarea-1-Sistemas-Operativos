@@ -53,7 +53,7 @@ Para pasar las pruebas de estrés, como fueron las 10000 tareas y cumplir con la
 4. **Uso de exit(1) vs exit(0) en los hijos**
   En las simulaciones de fallo, los hijos llaman a _exit(). Decidimos usar esta syscall directa en lugar de la función estándar de C para evitar que el hijo vacíe accidentalmente los buffers de la consula (como los cout que el padre dejó pendientes), lo que habría ensuciado el output por terminal.
 
-5.- **Manejo de SIGPIPE**
+5. **Manejo de SIGPIPE**
   Agregamos "signal(SIGPIPE, SIG_IGN)" en el main. Esto lo hicimos como medida de seguridad por si un hijo sufre un error y cierra su pipe de lectura antes de que el padre termine de escribir los insumos. En lugar de que el programa crashee entero, el error de escritura simplemente retorna -1 y el planificador sigue funcionando asilando el error.
 
 
