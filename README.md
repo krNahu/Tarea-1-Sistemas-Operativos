@@ -1,6 +1,6 @@
 # Tarea-1-Sistemas-Operativos
 
-Para la realización de la Tarea 1 de sistemas operativos se construirá un programa que simula un planificador de tareas, este lee un archvo de texto con un Grafo Acíclico (DAG) qye kabza oricesis concurrentes usando "fork()" respetando el límite establecido "K", de esa manera maneja la comunicación entre ellos mediante pipes de POSIX.
+Para la realización de la Tarea 1 de sistemas operativos se construirá un programa que simula un planificador de tareas, este lee un archvo de texto con un Grafo Acíclico (DAG) que lanza procesos concurrentes usando "fork()" respetando el límite establecido "K", de esa manera maneja la comunicación entre ellos mediante pipes de POSIX.
 
 ## Integrantes
 
@@ -51,7 +51,7 @@ Para pasar las pruebas de estrés, como fueron las 10000 tareas y cumplir con la
   
 
 4. **Uso de exit(1) vs exit(0) en los hijos**
-  En las simulaciones de fallo, los hijos llaman a _exit(). Decidimos usar esta syscall directa en lugar de la función estándar de C para evitar que el hijo vacíe accidentalmente los buffers de la consula (como los cout que el padre dejó pendientes), lo que habría ensuciado el output por terminal.
+  En las simulaciones de fallo, los hijos llaman a "_exit()". Decidimos usar esta syscall directa en lugar de la función estándar de C para evitar que el hijo vacíe accidentalmente los buffers de la consula (como los cout que el padre dejó pendientes), lo que habría ensuciado el output por terminal.
 
 5. **Manejo de SIGPIPE**
   Agregamos "signal(SIGPIPE, SIG_IGN)" en el main. Esto lo hicimos como medida de seguridad por si un hijo sufre un error y cierra su pipe de lectura antes de que el padre termine de escribir los insumos. En lugar de que el programa crashee entero, el error de escritura simplemente retorna -1 y el planificador sigue funcionando asilando el error.
