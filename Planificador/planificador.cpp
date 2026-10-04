@@ -136,6 +136,166 @@ bool leerPlan(string archivo) {
     return true;
 }
 
+
+void resumen() {
+    int ok = 0, falladas = 0, abortadas = 0;
+    for (int i = 0; i < (int)acts.size(); i++) {
+        if (acts[i].estado == TERMINADA) ok++;
+        if (acts[i].estado == FALLIDA) falladas++;
+        if (acts[i].estado == ABORTADA) abortadas++;
+    }
+    cout << "\n Resumen" << endl;
+    cout << "Terminadas: " << ok << endl;
+    cout << "Falladas:   " << falladas << endl;
+    cout << "Abortadas:  " << abortadas << endl;
+}
+
+
+void manejador(int sig) {
+    (void)sig;
+    seremi = 1;
+}
+
+void manejadorHijo(int sig) {
+    (void)sig;
+}
+
+void abortarTodo() {
+    cout << "\n Llego el SEREMI! Guarden todo :,v" << endl;
+
+    for (int k = 0; k < (int)corriendo.size(); k++) {
+        kill(acts[corriendo[k]].pid, SIGKILL);
+    }
+    for (int k = 0; k < (int)corriendo.size(); k++) {
+        waitpid(acts[corriendo[k]].pid, NULL, 0);
+        close(acts[corriendo[k]].fdLectura);
+    }
+    corriendo.clear();
+
+    for (int i = 0; i < (int)acts.size(); i++) {
+        if (acts[i].estado == ESPERANDO || acts[i].estado == CORRIENDO) {
+            acts[i].estado = ABORTADA;
+        }
+    }
+    resumen();
+    exit(1);
+}
+
+void abortarRama(int origen) {
+    vector<int> pila;
+    pila.push_back(origen);
+
+    while (!pila.empty()) {
+        int x = pila.back();
+        pila.pop_back();
+        for (int k = 0; k < (int)acts[x].dependientes.size(); k++) {
+            int h = acts[x].dependientes[k];
+            if (acts[h].estado == ESPERANDO) {
+                acts[h].estado = ABORTADA;
+                terminadas++;
+                cout << "[ABORTADO] " << acts[h].Nombre_Actividad << " (dependia de una actividad fallida)" << endl;
+                pila.push_back(h);
+            }
+        }
+    }
+}
+
+void fallaAlLanzar(int i) {
+    acts[i].estado = FALLIDA;
+    terminadas++;
+    cout << "[FALLO] " << acts[i].Nombre_Actividad << " (no se pudo crear el proceso)" << endl;
+    abortarRama(i);
+}
+
+void codigoHijo(int i, int fdEntrada, int fdSalida) {
+    signal(SIGINT, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
+    sigprocmask(SIG_SETMASK, &mascaraOriginal, NULL);
+
+    for (int k = 0; k < (int)corriendo.size(); k++) {
+        close(acts[corriendo[k]].fdLectura);
+    }
+
+    char buffer[4096];
+    int insumos = 0;
+    int n;
+
+    while ((n = read(fdEntrada, buffer, sizeof(buffer))) > 0) {
+        for (int k = 0; k < n; k++) {
+            if (buffer[k] == '\n') insumos++;
+        }
+    }
+    close(fdEntrada);
+
+    sleep(acts[i].tiempo_ms / 1000);
+    usleep((acts[i].tiempo_ms % 1000) * 1000);
+
+    if (acts[i].Nombre_Actividad.substr(0, 5) == "falla") {
+        _exit(1);
+    }
+
+    char msg[256];
+    snprintf(msg, 256, "%s terminada (recibio %d insumos)", acts[i].Nombre_Actividad.c_str(), insumos);
+    if (write(fdSalida, msg, strlen(msg)) < 0) {
+        _exit(1);
+    }
+    close(fdSalida);
+    _exit(0);
+}
+
+void lanzar(int i) {
+    int entrada[2];   
+    int salida[2];  
+
+    if (pipe(entrada) < 0) {
+        perror("pipe");
+        fallaAlLanzar(i);
+        return;
+    }
+    if (pipe(salida) < 0) {
+        perror("pipe");
+        close(entrada[0]);
+        close(entrada[1]);
+        fallaAlLanzar(i);
+        return;
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        close(entrada[0]); close(entrada[1]);
+        close(salida[0]); close(salida[1]);
+        fallaAlLanzar(i);
+        return;
+    }
+
+    if (pid == 0) {
+        close(entrada[1]);
+        close(salida[0]);
+        codigoHijo(i, entrada[0], salida[1]);
+    }
+
+    close(entrada[0]);
+    close(salida[1]);
+
+    if (write(entrada[1], acts[i].inbox.c_str(), acts[i].inbox.size()) < 0) {
+    }
+    close(entrada[1]); 
+
+    acts[i].fdLectura = salida[0];
+    acts[i].pid = pid;
+    acts[i].estado = CORRIENDO;
+    corriendo.push_back(i);
+    cout << "[INICIA] " << acts[i].Nombre_Actividad << " (" << acts[i].tiempo_ms << " ms)" << endl;
+}
+
+
+
+
+
+
+
+
 int main(){
 
 return 0;
