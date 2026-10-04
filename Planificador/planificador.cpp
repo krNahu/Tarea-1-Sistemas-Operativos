@@ -293,10 +293,115 @@ void lanzar(int i) {
 
 
 
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        cerr << "Usar " << argv[0] << " plan.txt K" << endl;
+        return 1;
+    }
 
+    int K = 0;
+    if (!esEnteroPositivo(argv[2], K)) {
+        cerr << "K debe ser un entero positivo" << endl;
+        return 1;
+    }
 
+    srand(time(NULL));
+    if (!leerPlan(argv[1])) return 1;
 
-int main(){
+    sigset_t bloqueadas;
+    sigemptyset(&bloqueadas);
 
-return 0;
+    sigaddset(&bloqueadas, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &bloqueadas, &mascaraOriginal);
+
+    signal(SIGINT, manejador);
+    signal(SIGCHLD, manejadorHijo);
+    signal(SIGPIPE, SIG_IGN);
+
+    queue<int> listos;
+    for (int i = 0; i < (int)acts.size(); i++) {
+        if (acts[i].pendientes == 0) listos.push(i);
+    }
+
+    int total = acts.size();
+    while (terminadas < total) {
+        if (seremi) abortarTodo();
+
+        while ((int)corriendo.size() < K && !listos.empty() && !seremi) {
+            int i = listos.front();
+            listos.pop();
+            lanzar(i);
+        }
+
+        if (corriendo.empty()) {
+            if (listos.empty()) break;
+            continue;
+        }
+
+        int status;
+        pid_t pid = waitpid(-1, &status, WNOHANG);
+
+        if (pid == 0) {
+            sigsuspend(&mascaraOriginal);
+            continue;
+        }
+        if (pid < 0) {
+            if (seremi) abortarTodo();
+            break;
+        }
+
+        int pos = -1;
+        for (int k = 0; k < (int)corriendo.size(); k++) {
+            if (acts[corriendo[k]].pid == pid) pos = k;
+        }
+        if (pos == -1) continue;
+        int i = corriendo[pos];
+        corriendo.erase(corriendo.begin() + pos);
+
+        char msg[256];
+        int n;
+        do {
+            n = read(acts[i].fdLectura, msg, 255);
+        } while (n < 0 && errno == EINTR);
+        if (n < 0) n = 0;
+        msg[n] = '\0';
+        close(acts[i].fdLectura);
+        terminadas++;
+
+        if (seremi) {
+            acts[i].estado = ABORTADA;
+            continue;  
+        }
+
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            acts[i].estado = TERMINADA;
+            cout << "[FIN] " << msg << endl;
+
+            for (int k = 0; k < (int)acts[i].dependientes.size(); k++) {
+                int h = acts[i].dependientes[k];
+                acts[h].inbox += msg;
+                acts[h].inbox += "\n";
+                acts[h].pendientes--;
+                if (acts[h].pendientes == 0 && acts[h].estado == ESPERANDO) {
+                    listos.push(h);
+                }
+            }
+        } else {
+            acts[i].estado = FALLIDA;
+            cout << "[FALLO] " << acts[i].Nombre_Actividad << endl;
+            abortarRama(i);
+        }
+    }
+
+    if (terminadas < total && !seremi) {
+        cerr << "no se pudieron ejecutar todas las actividades" << endl;
+        for (int i = 0; i < (int)acts.size(); i++) {
+            if (acts[i].estado == ESPERANDO) acts[i].estado = ABORTADA;
+        }
+    }
+
+    resumen();
+    return 0;
 }
+
+
