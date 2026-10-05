@@ -23,6 +23,22 @@ Para ejecutar, se debe proporcionar el archivo de texto y el límite de concurre
 ./planificador plan.txt 4
 ```
 
+
+## Prueba de Estrés (10,000 tareas)
+
+Para cumplir con el requerimiento de carga de trabajo pesada, desarrollamos un script en Python (`generar_estres.py`) que crea un plan de 10.000 actividades manteniendo la temática del enunciado original.
+
+Este generador arma un DAG denso asegurando que:
+* Las tareas tengan dependencias válidas hacia atrás (evitando ciclos lógicos).
+* El 50% de las tareas se generen con el campo de tiempo en blanco, forzando al planificador C++ a asignarles una duración aleatoria.
+* Un 1% de las tareas se generen intencionalmente con el prefijo `"falla_..."` (ej. `falla_asar_longaniza_402`). Esto nos permite gatillar la lógica de error y demostrar en tiempo real cómo funciona el efecto cascada que aborta tareas dependientes sin crashear el simulador.
+
+Para crear el archivo de estrés y correr la prueba:
+```bash
+python3 generar_estres.py
+./planificador plan_estres.txt 100
+
+
 ## Funciones implementadas
 
 *   `leerPlan(string archivo)`: Esta función lee el archivo línea por línea, hace el split por ":" y maneja casos borde (como asignar un tiempo aleatorio si viene vacío). Además, arma la estructura del DAG guardando cuántas dependencias tiene cada tarea para saber cuándo están listas.
