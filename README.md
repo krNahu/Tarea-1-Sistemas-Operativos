@@ -11,7 +11,7 @@ Para la realización de la Tarea 1 de Sistemas Operativos se desarrolló un prog
 
 El código se desarrolló en C++ y las normas de compilación fueron seguidas estrictamente. 
 
-Para compilar:
+Para compilar (dentro de la carpeta Planificador):
 
 ```bash
 g++ -Wall -Wextra -std=c++17 -o planificador planificador.cpp -lpthread
