@@ -37,7 +37,7 @@ Para crear el archivo de estrés y correr la prueba:
 ```bash
 python3 generar_estres.py
 ./planificador plan_estres.txt 100
-
+```
 
 ## Funciones implementadas
 
